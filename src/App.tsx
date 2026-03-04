@@ -1,4 +1,6 @@
 import { useState, useRef, ReactNode, ChangeEvent, MouseEvent, useCallback, JSX } from "react";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "./contexts/AuthContext";
 import ThemeToggle from "./components/ThemeToggle";
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -395,6 +397,15 @@ export default function App(): JSX.Element {
     TC_TYPES.forEach(t => initial[t] = 0);
     return initial;
   });
+
+  // Auth hooks
+  const { logout } = useAuth();
+  const navigate = useNavigate();
+
+  const handleLogout = async () => {
+    await logout();
+    navigate("/login");
+  };
 
   const sumTypeCounts = (): number => Object.values(testCaseTypeCounts).reduce((s, v) => s + (Number(v) || 0), 0);
 
@@ -929,6 +940,14 @@ priority: High|Medium|Low  status: Pending  category: Functional|Validation|Boun
 
         <div style={{marginLeft:"auto",display:"flex",gap:6,flexShrink:0,alignItems:'center'}}>
           <ThemeToggle />
+          <button
+            onClick={handleLogout}
+            className="tab tab-off"
+            style={{padding:"6px 12px",fontSize:11,fontWeight:600,color:C.red,border:`1px solid ${C.red}33`}}
+            title="Sign out"
+          >
+            🚪 LOGOUT
+          </button>
           <button className={`tab ${tab==="builder"?"tab-on":"tab-off"}`} onClick={()=>setTab("builder")}>
             ⚙ BUILDER {fields.length>0&&<span style={{background:tab==="builder"?"#00000033":C.accentDim,padding:"1px 6px",borderRadius:10,fontSize:9}}>{fields.length}</span>}
           </button>
