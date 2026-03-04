@@ -1,6 +1,8 @@
 import { JSX, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
+import { useAuthTheme, THEME_COLORS } from "../contexts/ThemeContext";
+import ThemeSelectorAuth from "../components/ThemeSelectorAuth";
 
 export default function Login(): JSX.Element {
   const [email, setEmail] = useState("");
@@ -8,6 +10,8 @@ export default function Login(): JSX.Element {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const { login } = useAuth();
+  const { authTheme } = useAuthTheme();
+  const colors = THEME_COLORS[authTheme];
   const navigate = useNavigate();
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -34,19 +38,29 @@ export default function Login(): JSX.Element {
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 dark:from-black dark:via-slate-900 dark:to-black flex items-center justify-center p-3 sm:p-4 md:p-6">
       {/* Animated background elements */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-20 left-10 w-72 h-72 bg-blue-500/10 rounded-full blur-3xl animate-pulse"></div>
-        <div className="absolute bottom-20 right-10 w-60 h-60 bg-cyan-500/10 rounded-full blur-3xl animate-pulse" style={{animationDelay: "1s"}}></div>
+        <div className="absolute top-20 left-10 w-72 h-72 rounded-full blur-3xl animate-pulse opacity-20" style={{background: "linear-gradient(135deg, currentColor, transparent)"}}></div>
+        <div className="absolute bottom-20 right-10 w-60 h-60 rounded-full blur-3xl animate-pulse opacity-20" style={{animationDelay: "1s", background: "linear-gradient(135deg, currentColor, transparent)"}}></div>
       </div>
+
+      <ThemeSelectorAuth />
 
       <div className="w-full max-w-sm relative z-10">
         {/* Card */}
         <div className="bg-white/95 dark:bg-slate-800/95 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/20 dark:border-slate-700/50 p-6 sm:p-8">
           {/* Header */}
           <div className="text-center mb-8">
-            <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-blue-500 via-blue-600 to-cyan-600 rounded-xl mb-4 shadow-lg shadow-blue-500/30 transform hover:scale-105 transition-transform duration-300">
+            <div 
+              className="inline-flex items-center justify-center w-16 h-16 rounded-xl mb-4 shadow-lg transform hover:scale-105 transition-transform duration-300"
+              style={{
+                background: `linear-gradient(135deg, var(--color-from), var(--color-to))`,
+                boxShadow: `0 25px 50px -12px rgba(0, 0, 0, 0.25)`,
+                '--color-from': colors.from.split('-')[1],
+                '--color-to': colors.to.split('-')[1],
+              } as React.CSSProperties}
+            >
               <span className="text-3xl">🔐</span>
             </div>
-            <h1 className="text-3xl sm:text-4xl font-bold bg-gradient-to-r from-blue-600 to-cyan-500 bg-clip-text text-transparent mb-2">
+            <h1 className="text-3xl sm:text-4xl font-bold mb-2" style={{background: `linear-gradient(to right, var(--gradient-from), var(--gradient-to))`, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text'} as React.CSSProperties}>
               Welcome Back
             </h1>
             <p className="text-gray-600 dark:text-gray-300 text-sm sm:text-base">
@@ -99,7 +113,23 @@ export default function Login(): JSX.Element {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-gradient-to-r from-blue-500 via-blue-600 to-cyan-500 hover:from-blue-600 hover:via-blue-700 hover:to-cyan-600 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-3 rounded-xl transition-all duration-300 transform hover:shadow-lg hover:shadow-blue-500/30 active:scale-95 flex items-center justify-center gap-2 shadow-lg shadow-blue-500/20"
+              className="w-full text-white font-bold py-3 rounded-xl transition-all duration-300 transform hover:shadow-lg active:scale-95 flex items-center justify-center gap-2 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+              style={{
+                background: `linear-gradient(to right, rgb(var(--color-from-rgb)), rgb(var(--color-to-rgb)))`,
+                '--color-from-rgb': colors.from === 'from-blue-500' ? '59, 130, 246' : 
+                                    colors.from === 'from-purple-500' ? '168, 85, 247' :
+                                    colors.from === 'from-cyan-500' ? '6, 182, 212' :
+                                    colors.from === 'from-indigo-500' ? '99, 102, 241' :
+                                    colors.from === 'from-emerald-500' ? '16, 185, 129' :
+                                    '244, 63, 94',
+                '--color-to-rgb': colors.to === 'to-cyan-500' ? '6, 182, 212' :
+                                  colors.to === 'to-pink-500' ? '236, 72, 153' :
+                                  colors.to === 'to-blue-500' ? '59, 130, 246' :
+                                  colors.to === 'to-purple-500' ? '168, 85, 247' :
+                                  colors.to === 'to-teal-500' ? '20, 184, 166' :
+                                  '249, 115, 22',
+                boxShadow: `0 20px 25px -5px rgba(0, 0, 0, 0.1)`,
+              } as React.CSSProperties}
             >
               {loading ? (
                 <>
