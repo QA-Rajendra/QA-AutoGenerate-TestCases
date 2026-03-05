@@ -1,6 +1,7 @@
-import { useState, useRef, ReactNode, ChangeEvent, MouseEvent, useCallback, JSX } from "react";
+import { useState, useRef, ReactNode, ChangeEvent, MouseEvent, useCallback, JSX, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "./contexts/AuthContext";
+import { useAuthTheme, THEME_COLORS, AuthTheme } from "./contexts/ThemeContext";
 import ThemeToggle from "./components/ThemeToggle";
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -187,6 +188,64 @@ const THEMES: Record<ThemeMode, Record<string, string>> = {
     red: "#f87171", redDim: "#f8717122", orange: "#fb923c", orangeDim: "#fb923c22",
     purple: "#c084fc", purpleDim: "#c084fc22", teal: "#2dd4bf", tealDim: "#2dd4bf22",
     highlight: "#10b98122", cardHover: "#2a5f57", borderHover: "#10b981",
+  },
+};
+
+// Theme colors mapped from login page AuthTheme to App colors
+const AUTH_THEME_TO_APP: Record<AuthTheme, Record<string, string>> = {
+  blue: {
+    bg: "#0f1b3c", surface: "#162c5e", card: "#1e3a7a",
+    border: "#2563eb66", text: "#e0e7ff", textDim: "#a5b4fc", muted: "#6366f1",
+    accent: "#3b82f6", accentDim: "#3b82f622", accentGlow: "#3b82f644",
+    green: "#10b981", greenDim: "#10b98122", yellow: "#f59e0b", yellowDim: "#f59e0b22",
+    red: "#ef4444", redDim: "#ef444422", orange: "#f97316", orangeDim: "#f9731622",
+    purple: "#a78bfa", purpleDim: "#a78bfa22", teal: "#14b8a6", tealDim: "#14b8a622",
+    highlight: "#3b82f622", cardHover: "#254ea0", borderHover: "#3b82f6",
+  },
+  purple: {
+    bg: "#2d0f54", surface: "#3d1a6e", card: "#4d2a8e",
+    border: "#a855f744", text: "#e9d5ff", textDim: "#ddd6fe", muted: "#c084fc",
+    accent: "#a855f7", accentDim: "#a855f722", accentGlow: "#a855f744",
+    green: "#10b981", greenDim: "#10b98122", yellow: "#f59e0b", yellowDim: "#f59e0b22",
+    red: "#ef4444", redDim: "#ef444422", orange: "#f97316", orangeDim: "#f9731622",
+    purple: "#d8b4fe", purpleDim: "#d8b4fe22", teal: "#14b8a6", tealDim: "#14b8a622",
+    highlight: "#a855f722", cardHover: "#5d3a9e", borderHover: "#a855f7",
+  },
+  cyan: {
+    bg: "#0e3f47", surface: "#1a5560", card: "#2a7580",
+    border: "#06b6d466", text: "#cffafe", textDim: "#a5f3fc", muted: "#67e8f9",
+    accent: "#06b6d4", accentDim: "#06b6d422", accentGlow: "#06b6d444",
+    green: "#10b981", greenDim: "#10b98122", yellow: "#f59e0b", yellowDim: "#f59e0b22",
+    red: "#ef4444", redDim: "#ef444422", orange: "#f97316", orangeDim: "#f9731622",
+    purple: "#a78bfa", purpleDim: "#a78bfa22", teal: "#2dd4bf", tealDim: "#2dd4bf22",
+    highlight: "#06b6d422", cardHover: "#3a95a0", borderHover: "#06b6d4",
+  },
+  indigo: {
+    bg: "#1e0f47", surface: "#2d1b6e", card: "#3d2b8e",
+    border: "#6366f144", text: "#e0e7ff", textDim: "#c7d2fe", muted: "#818cf8",
+    accent: "#6366f1", accentDim: "#6366f122", accentGlow: "#6366f144",
+    green: "#10b981", greenDim: "#10b98122", yellow: "#f59e0b", yellowDim: "#f59e0b22",
+    red: "#ef4444", redDim: "#ef444422", orange: "#f97316", orangeDim: "#f9731622",
+    purple: "#c4b5fd", purpleDim: "#c4b5fd22", teal: "#14b8a6", tealDim: "#14b8a622",
+    highlight: "#6366f122", cardHover: "#4d3b9e", borderHover: "#6366f1",
+  },
+  emerald: {
+    bg: "#0d2e2a", surface: "#1a4d45", card: "#2a6d65",
+    border: "#10b98166", text: "#d1fae5", textDim: "#a7f3d0", muted: "#6ee7b7",
+    accent: "#10b981", accentDim: "#10b98122", accentGlow: "#10b98144",
+    green: "#34d399", greenDim: "#34d39922", yellow: "#fbbf24", yellowDim: "#fbbf2422",
+    red: "#f87171", redDim: "#f8717122", orange: "#fb923c", orangeDim: "#fb923c22",
+    purple: "#c084fc", purpleDim: "#c084fc22", teal: "#2dd4bf", tealDim: "#2dd4bf22",
+    highlight: "#10b98122", cardHover: "#3a7d77", borderHover: "#10b981",
+  },
+  rose: {
+    bg: "#3d0f2e", surface: "#5a1f47", card: "#7a2f67",
+    border: "#f43f5e55", text: "#ffe4e6", textDim: "#fbcfe8", muted: "#f472b6",
+    accent: "#f43f5e", accentDim: "#f43f5e22", accentGlow: "#f43f5e44",
+    green: "#10b981", greenDim: "#10b98122", yellow: "#f59e0b", yellowDim: "#f59e0b22",
+    red: "#ef4444", redDim: "#ef444422", orange: "#f97316", orangeDim: "#f9731622",
+    purple: "#e879f9", purpleDim: "#e879f922", teal: "#14b8a6", tealDim: "#14b8a622",
+    highlight: "#f43f5e22", cardHover: "#9a3f5f", borderHover: "#f43f5e",
   },
 };
 
@@ -452,7 +511,17 @@ export default function App(): JSX.Element {
   const [filterVersion,  setFilterVersion]  = useState<number|"All">("All");
   const [globalValidations, setGlobalValidations] = useState<string>("");
   const [testCaseCount,  setTestCaseCount]  = useState<number>(20);
-  const [theme, setTheme] = useState<ThemeMode>("dark");
+
+  // Get theme from login page
+  const { authTheme } = useAuthTheme();
+  
+  // Apply theme colors as CSS variables
+  useEffect(() => {
+    const themeColors = AUTH_THEME_TO_APP[authTheme];
+    Object.entries(themeColors).forEach(([key, value]) => {
+      document.documentElement.style.setProperty(`--${key}`, value);
+    });
+  }, [authTheme]);
 
   const TC_TYPES = [
     "Positive","Negative","Edge","Boundary","Functional","Security","Performance","Regression","UI","Integration"

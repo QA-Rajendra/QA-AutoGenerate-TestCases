@@ -1,30 +1,99 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
+import { useAuthTheme, AuthTheme, THEME_COLORS } from '../contexts/ThemeContext';
 
-// simple theme toggle, can be integrated with shadcn/ui components later
 export default function ThemeToggle(): JSX.Element {
-  const [theme, setTheme] = useState<'light' | 'dark'>(() => {
-    if (typeof window === 'undefined') return 'light';
-    const stored = localStorage.getItem('theme');
-    if (stored === 'dark' || stored === 'light') return stored;
-    // detect system preference
-    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-  });
+  const { authTheme, setAuthTheme } = useAuthTheme();
+  const [isOpen, setIsOpen] = useState(false);
 
-  useEffect(() => {
-    const root = document.documentElement;
-    if (theme === 'dark') {
-      root.classList.add('dark');
-    } else {
-      root.classList.remove('dark');
-    }
-    localStorage.setItem('theme', theme);
-  }, [theme]);
+  const themes: AuthTheme[] = ['blue', 'purple', 'cyan', 'indigo', 'emerald', 'rose'];
+  const themeIcons: Record<AuthTheme, string> = {
+    blue: '🔵',
+    purple: '🟣',
+    cyan: '🔷',
+    indigo: '🟦',
+    emerald: '💚',
+    rose: '🌹',
+  };
 
-  const toggle = () => setTheme(t => (t === 'dark' ? 'light' : 'dark'));
+  const themeLabels: Record<AuthTheme, string> = {
+    blue: 'Blue',
+    purple: 'Purple',
+    cyan: 'Cyan',
+    indigo: 'Indigo',
+    emerald: 'Emerald',
+    rose: 'Rose',
+  };
 
   return (
-    <button onClick={toggle} className="btn btn-g" title="Toggle light/dark theme">
-      {theme === 'dark' ? '🌞 Light' : '🌙 Dark'}
-    </button>
+    <div style={{ position: 'relative', display: 'inline-block' }}>
+      <button 
+        onClick={() => setIsOpen(!isOpen)} 
+        className="btn btn-g" 
+        title="Change theme"
+        style={{ position: 'relative' }}
+      >
+        {themeIcons[authTheme]} {authTheme.charAt(0).toUpperCase() + authTheme.slice(1)}
+      </button>
+      
+      {isOpen && (
+        <div style={{
+          position: 'absolute',
+          top: '100%',
+          right: 0,
+          marginTop: 4,
+          backgroundColor: 'var(--card)',
+          border: `1px solid var(--border)`,
+          borderRadius: 6,
+          padding: '4px',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 2,
+          zIndex: 1000,
+          minWidth: 140,
+          boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+        }}>
+          {themes.map(t => (
+            <button
+              key={t}
+              onClick={() => {
+                setAuthTheme(t);
+                setIsOpen(false);
+              }}
+              style={{
+                padding: '8px 12px',
+                border: authTheme === t ? `2px solid var(--accent)` : `1px solid var(--border)`,
+                backgroundColor: authTheme === t ? 'var(--highlight)' : 'transparent',
+                borderRadius: 4,
+                cursor: 'pointer',
+                fontSize: 11,
+                fontWeight: 700,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+                color: 'var(--text)',
+                transition: 'all 0.15s',
+              }}
+              onMouseEnter={(e) => {
+                const btn = e.currentTarget as HTMLButtonElement;
+                if (authTheme !== t) {
+                  btn.style.borderColor = 'var(--accent)';
+                  btn.style.backgroundColor = 'var(--accentDim)';
+                }
+              }}
+              onMouseLeave={(e) => {
+                const btn = e.currentTarget as HTMLButtonElement;
+                if (authTheme !== t) {
+                  btn.style.borderColor = 'var(--border)';
+                  btn.style.backgroundColor = 'transparent';
+                }
+              }}
+            >
+              <span style={{ fontSize: 14 }}>{themeIcons[t]}</span>
+              {themeLabels[t]}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
