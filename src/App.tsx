@@ -13,6 +13,7 @@ type Status = "Pending"|"Pass"|"Fail"|"Blocked";
 type TabType = "builder"|"testcases"|"versions";
 type BuildState = "idle"|"locked"|"unlocked";
 type TCCategory = "All"|"Functional"|"Validation"|"Boundary"|"Negative"|"Dependency"|"Regression"|"Delta";
+type ThemeMode = "dark"|"light"|"blue"|"green";
 
 interface ConditionBranch {
   id: number;
@@ -147,6 +148,46 @@ const BTN_VARIANT_C = {
   primary:  { bg:C.accent,   text:"#000", border:C.accent },
   secondary:{ bg:C.surface,  text:C.textDim, border:C.border },
   danger:   { bg:C.red,      text:"#fff", border:C.red },
+};
+
+// Theme Palettes
+const THEMES: Record<ThemeMode, Record<string, string>> = {
+  dark: {
+    bg: "#0a0e27", surface: "#141829", card: "#1a202c",
+    border: "#2a3050", text: "#e0e6f2", textDim: "#a0aac4", muted: "#707da0",
+    accent: "#00d4ff", accentDim: "#00d4ff22", accentGlow: "#00d4ff44",
+    green: "#00e5a0", greenDim: "#00e5a022", yellow: "#ffc847", yellowDim: "#ffc84722",
+    red: "#ff4d6d", redDim: "#ff4d6d22", orange: "#ff8c42", orangeDim: "#ff8c4222",
+    purple: "#b57cff", purpleDim: "#b57cff22", teal: "#00e5a0", tealDim: "#00e5a022",
+    highlight: "#00d4ff22", cardHover: "#202438", borderHover: "#3a4060",
+  },
+  light: {
+    bg: "#f5f7fa", surface: "#ffffff", card: "#efeffd",
+    border: "#d0d5e0", text: "#1a1f35", textDim: "#4a5568", muted: "#7a8699",
+    accent: "#0066ff", accentDim: "#0066ff11", accentGlow: "#0066ff22",
+    green: "#00b366", greenDim: "#00b36611", yellow: "#ff9d00", yellowDim: "#ff9d0011",
+    red: "#ff3366", redDim: "#ff336611", orange: "#ff7f00", orangeDim: "#ff7f0011",
+    purple: "#7f39fb", purpleDim: "#7f39fb11", teal: "#00b366", tealDim: "#00b36611",
+    highlight: "#0066ff11", cardHover: "#f0f5ff", borderHover: "#c0c5d0",
+  },
+  blue: {
+    bg: "#0f1b3c", surface: "#162c5e", card: "#1e3a7a",
+    border: "#2563eb66", text: "#e0e7ff", textDim: "#a5b4fc", muted: "#6366f1",
+    accent: "#3b82f6", accentDim: "#3b82f622", accentGlow: "#3b82f644",
+    green: "#10b981", greenDim: "#10b98122", yellow: "#f59e0b", yellowDim: "#f59e0b22",
+    red: "#ef4444", redDim: "#ef444422", orange: "#f97316", orangeDim: "#f9731622",
+    purple: "#a78bfa", purpleDim: "#a78bfa22", teal: "#14b8a6", tealDim: "#14b8a622",
+    highlight: "#3b82f622", cardHover: "#254ea0", borderHover: "#3b82f6",
+  },
+  green: {
+    bg: "#0d1f1a", surface: "#1a3a34", card: "#265152",
+    border: "#059669", text: "#d1fae5", textDim: "#a7f3d0", muted: "#6ee7b7",
+    accent: "#10b981", accentDim: "#10b98122", accentGlow: "#10b98144",
+    green: "#34d399", greenDim: "#34d39922", yellow: "#fbbf24", yellowDim: "#fbbf2422",
+    red: "#f87171", redDim: "#f8717122", orange: "#fb923c", orangeDim: "#fb923c22",
+    purple: "#c084fc", purpleDim: "#c084fc22", teal: "#2dd4bf", tealDim: "#2dd4bf22",
+    highlight: "#10b98122", cardHover: "#2a5f57", borderHover: "#10b981",
+  },
 };
 
 const FIELD_TYPES = [
@@ -411,6 +452,7 @@ export default function App(): JSX.Element {
   const [filterVersion,  setFilterVersion]  = useState<number|"All">("All");
   const [globalValidations, setGlobalValidations] = useState<string>("");
   const [testCaseCount,  setTestCaseCount]  = useState<number>(20);
+  const [theme, setTheme] = useState<ThemeMode>("dark");
 
   const TC_TYPES = [
     "Positive","Negative","Edge","Boundary","Functional","Security","Performance","Regression","UI","Integration"
