@@ -6,7 +6,7 @@ import ThemeToggle from "./components/ThemeToggle";
 // ═══════════════════════════════════════════════════════════════════════════
 // TYPES
 // ═══════════════════════════════════════════════════════════════════════════
-type FieldType = "text"|"password"|"email"|"number"|"dropdown"|"checkbox"|"radio"|"date"|"file"|"textarea"|"button";
+type FieldType = "text"|"password"|"email"|"number"|"dropdown"|"checkbox"|"radio"|"date"|"file"|"textarea"|"button"|"table";
 type ButtonAction = "submit"|"cancel"|"custom";
 type Priority = "High"|"Medium"|"Low";
 type Status = "Pending"|"Pass"|"Fail"|"Blocked";
@@ -29,6 +29,29 @@ interface Dependency {
   targetFieldId: number | null;
 }
 
+interface TableColumn {
+  id: number;
+  name: string;
+  sortable: boolean;
+  type: "normal" | "action";
+  actions?: ("edit" | "delete" | "save" | "view" | "extend")[];
+}
+
+interface TableRow {
+  id: string;
+  values: Record<string, string>;
+}
+
+interface TableConfig {
+  tableName: string;
+  columns: TableColumn[];
+  rows: TableRow[];
+  allowEditable?: boolean;
+  addingColumn?: boolean;
+  newColumnName?: string;
+  newColumnType?: "normal" | "action";
+}
+
 interface Field {
   id: number;
   type: FieldType;
@@ -42,6 +65,7 @@ interface Field {
   customValidations?: string[];
   dependencies?: Dependency[];
   defaultValue?: string;
+  tableConfig?: TableConfig;
 }
 
 interface BuildVersion {
@@ -137,6 +161,7 @@ const FIELD_TYPES = [
   { id:"file"      as FieldType, label:"File Upload",  icon:"📎" },
   { id:"textarea"  as FieldType, label:"Text Area",    icon:"¶"  },
   { id:"button"    as FieldType, label:"Button",       icon:"⬡"  },
+  { id:"table"     as FieldType, label:"Data Table",   icon:"📊" },
 ];
 
 const DEP_ACTIONS = ["show","hide","enable","disable","require"] as const;
@@ -429,8 +454,9 @@ export default function App(): JSX.Element {
     const ft = FIELD_TYPES.find(f=>f.id===type);
     if (!ft) return;
     const isBtn = type==="button";
+    const isTbl = type==="table";
     setFields(p=>[...p,{
-      id:Date.now(), type, label:isBtn?"Save":ft.label,
+      id:Date.now(), type, label:isBtn?"Save":isTbl?"Data Table":ft.label,
       mandatory:false, validation:{},
       options:["dropdown","checkbox","radio"].includes(type)?["Option 1","Option 2"]:[],
       buttonAction:isBtn?"submit":undefined,
@@ -439,6 +465,15 @@ export default function App(): JSX.Element {
       customValidations:[],
       dependencies:[],
       defaultValue:"",
+      tableConfig:isTbl?{
+        tableName:"My Table",
+        columns:[],
+        rows:[],
+        allowEditable:true,
+        addingColumn:false,
+        newColumnName:"",
+        newColumnType:"normal",
+      }:undefined,
     }]);
   };
 
@@ -499,6 +534,77 @@ export default function App(): JSX.Element {
   const removeDep = (fid: number, did: number): void => {
     if (isLocked) return;
     setFields(p=>p.map(f=>f.id===fid?{...f,dependencies:(f.dependencies||[]).filter(d=>d.id!==did)}:f));
+  };
+
+  // Table CRUD
+  const updateTableName = (fid: number, n: string): void => {
+    if (isLocked) return;
+    setFields(p=>p.map(f=>f.id===fid&&f.tableConfig?{...f,tableConfig:{...f.tableConfig,tableName:n}}:f));
+  };
+
+  const addTableCol = (fid: number): void => {
+    if (isLocked) return;
+    setFields(p=>p.map(f=>f.id===fid&&f.tableConfig?{...f,tableConfig:{...f.tableConfig,
+      columns:[...f.tableConfig.columns,{id:Date.now(),name:"",sortable:false,type:"normal",actions:[]}],
+      addingColumn:false,newColumnName:"",newColumnType:"normal"
+    }}:f));
+  };
+
+  const removeTableCol = (fid: number, colId: number): void => {
+    if (isLocked) return;
+    setFields(p=>p.map(f=>f.id===fid&&f.tableConfig?{...f,tableConfig:{...f.tableConfig,
+      columns:f.tableConfig.columns.filter(c=>c.id!==colId),
+      rows:f.tableConfig.rows.map(r=>({...r,values:Object.fromEntries(Object.entries(r.values).filter(([k])=>k!==`col_${colId}`))}))
+    }}:f));
+  };
+
+  const updateTableColName = (fid: number, colId: number, n: string): void => {
+    if (isLocked) return;
+    setFields(p=>p.map(f=>f.id===fid&&f.tableConfig?{...f,tableConfig:{...f.tableConfig,
+      columns:f.tableConfig.columns.map(c=>c.id===colId?{...c,name:n}:c)
+    }}:f));
+  };
+
+  const updateTableColType = (fid: number, colId: number, t: "normal"|"action"): void => {
+    if (isLocked) return;
+    setFields(p=>p.map(f=>f.id===fid&&f.tableConfig?{...f,tableConfig:{...f.tableConfig,
+      columns:f.tableConfig.columns.map(c=>c.id===colId?{...c,type:t,sortable:t==="action"?false:c.sortable,actions:t==="action"?["edit","delete"]:[],...(t==="action"?{name:"Action"}:{})}:c)
+    }}:f));
+  };
+
+  const updateTableColSortable = (fid: number, colId: number, s: boolean): void => {
+    if (isLocked) return;
+    setFields(p=>p.map(f=>f.id===fid&&f.tableConfig?{...f,tableConfig:{...f.tableConfig,
+      columns:f.tableConfig.columns.map(c=>c.id===colId?{...c,sortable:s}:c)
+    }}:f));
+  };
+
+  const updateTableColActions = (fid: number, colId: number, acts: string[]): void => {
+    if (isLocked) return;
+    setFields(p=>p.map(f=>f.id===fid&&f.tableConfig?{...f,tableConfig:{...f.tableConfig,
+      columns:f.tableConfig.columns.map(c=>c.id===colId?{...c,actions:acts}:c)
+    }}:f));
+  };
+
+  const addTableRow = (fid: number): void => {
+    if (isLocked) return;
+    setFields(p=>p.map(f=>f.id===fid&&f.tableConfig?{...f,tableConfig:{...f.tableConfig,
+      rows:[...f.tableConfig.rows,{id:Date.now(),values:Object.fromEntries(f.tableConfig.columns.filter(c=>c.type==="normal").map(c=>[`col_${c.id}`,""]))}]
+    }}:f));
+  };
+
+  const removeTableRow = (fid: number, rowId: number): void => {
+    if (isLocked) return;
+    setFields(p=>p.map(f=>f.id===fid&&f.tableConfig?{...f,tableConfig:{...f.tableConfig,
+      rows:f.tableConfig.rows.filter(r=>r.id!==rowId)
+    }}:f));
+  };
+
+  const updateTableCell = (fid: number, rowId: number, colId: number, v: string): void => {
+    if (isLocked) return;
+    setFields(p=>p.map(f=>f.id===fid&&f.tableConfig?{...f,tableConfig:{...f.tableConfig,
+      rows:f.tableConfig.rows.map(r=>r.id===rowId?{...r,values:{...r.values,[`col_${colId}`]:v}}:r)
+    }}:f));
   };
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -1190,7 +1296,7 @@ priority: High|Medium|Low  status: Pending  category: Functional|Validation|Boun
                         )}
 
                         {/* ── REGULAR FIELD CONFIG ── */}
-                        {!isBtn&&(
+                        {!isBtn&&field.type!=="table"&&(
                           <>
                             <SectionTitle label="FIELD SETTINGS"/>
                             <div style={{display:"flex",gap:12,flexWrap:"wrap",alignItems:"center"}}>
@@ -1255,6 +1361,85 @@ priority: High|Medium|Low  status: Pending  category: Functional|Validation|Boun
                           </>
                         )}
 
+                        {/* ── TABLE CONFIG ── */}
+                        {field.type==="table"&&field.tableConfig&&(
+                          <>
+                            <SectionTitle label="TABLE SETTINGS"/>
+                            <div style={{backgroundColor:C.card,border:`1px solid ${C.border}`,borderRadius:6,padding:"10px 12px",marginBottom:12}}>
+                              <label style={{fontSize:9,color:C.muted,letterSpacing:2,display:"block",marginBottom:6}}>TABLE NAME</label>
+                              <input type="text" value={field.tableConfig.tableName||""} onChange={(e:ChangeEvent<HTMLInputElement>)=>updateTableName(field.id,e.target.value)} style={{width:"100%",fontSize:10,padding:"6px 8px",borderRadius:4,border:`1px solid ${C.border}`,background:C.surface,color:C.text}}/>
+                            </div>
+
+                            {/* Columns Section */}
+                            <div style={{marginTop:12}}>
+                              <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10,paddingBottom:8,borderBottom:`1px solid ${C.border}`}}>
+                                <div style={{fontSize:9,color:C.muted,letterSpacing:3,fontWeight:700}}>COLUMNS</div>
+                                <div style={{fontSize:9,color:C.textDim,background:C.accentDim,padding:"2px 8px",borderRadius:3,fontWeight:700}}>{field.tableConfig.columns.length}</div>
+                              </div>
+
+                              {field.tableConfig.columns.map((col,cidx)=>(
+                                <div key={col.id} style={{display:"flex",gap:8,alignItems:"center",marginBottom:8,padding:"10px",background:C.bg,border:`1px solid ${C.border}`,borderRadius:5}}>
+                                  <span style={{fontSize:9,color:C.muted,fontWeight:700,minWidth:18}}>Col {cidx+1}</span>
+                                  <input type="text" value={col.name} onChange={(e:ChangeEvent<HTMLInputElement>)=>updateTableColName(field.id,col.id,e.target.value)} style={{flex:1,fontSize:10,padding:"4px 7px",border:`1px solid ${C.border}`,borderRadius:3,background:col.type==="action"?C.surface:C.surface}} placeholder="Column name" disabled={col.type==="action"}/>
+                                  <select value={col.type} onChange={(e:ChangeEvent<HTMLSelectElement>)=>updateTableColType(field.id,col.id,e.target.value as "normal"|"action")} style={{fontSize:10,padding:"4px 7px",border:`1px solid ${C.border}`,borderRadius:3,background:C.surface}}>
+                                    <option value="normal">Data Column</option>
+                                    <option value="action">Action Column</option>
+                                  </select>
+                                  {col.type==="normal"&&(
+                                    <label style={{fontSize:9,color:C.textDim,display:"flex",alignItems:"center",gap:4,cursor:"pointer",userSelect:"none"}}>
+                                      <input type="checkbox" checked={col.sortable||false} onChange={(e:ChangeEvent<HTMLInputElement>)=>updateTableColSortable(field.id,col.id,e.target.checked)} style={{accentColor:C.accent}}/>
+                                      Sortable
+                                    </label>
+                                  )}
+                                  {col.type==="action"&&(
+                                    <div style={{fontSize:8,color:C.muted,display:"flex",gap:5,flexWrap:"wrap",alignItems:"center"}}>
+                                      {["edit","delete","save","view","extend"].map(act=>(
+                                        <label key={act} style={{display:"flex",alignItems:"center",gap:2,cursor:"pointer",userSelect:"none",padding:"2px 5px",borderRadius:3,background:col.actions?.includes(act)?C.accentDim:C.surface,border:`1px solid ${col.actions?.includes(act)?C.accent:C.border}`}}>
+                                          <input type="checkbox" checked={col.actions?.includes(act)||false} onChange={(e:ChangeEvent<HTMLInputElement>)=>{
+                                            const newActs=e.target.checked?[...col.actions||[],act]:(col.actions||[]).filter(a=>a!==act);
+                                            updateTableColActions(field.id,col.id,newActs);
+                                          }} style={{accentColor:C.accent}}/>
+                                          <span style={{fontSize:8}}>{act}</span>
+                                        </label>
+                                      ))}
+                                    </div>
+                                  )}
+                                  <button className="btn btn-d" style={{padding:"2px 8px",fontSize:9}} onClick={()=>removeTableCol(field.id,col.id)}>✕</button>
+                                </div>
+                              ))}
+
+                              <button className="btn btn-g" style={{fontSize:10}} onClick={()=>addTableCol(field.id)}>➕ Add Column</button>
+                            </div>
+
+                            {/* Rows Section */}
+                            <div style={{marginTop:14}}>
+                              <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10,paddingBottom:8,borderBottom:`1px solid ${C.border}`}}>
+                                <div style={{fontSize:9,color:C.muted,letterSpacing:3,fontWeight:700}}>ROWS</div>
+                                <div style={{fontSize:9,color:C.textDim,background:C.accentDim,padding:"2px 8px",borderRadius:3,fontWeight:700}}>{field.tableConfig.rows.length}</div>
+                              </div>
+
+                              {field.tableConfig.rows.map((row,ridx)=>(
+                                <div key={row.id} style={{padding:"10px",background:C.bg,border:`1px solid ${C.border}`,borderRadius:5,marginBottom:8}}>
+                                  <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8,paddingBottom:8,borderBottom:`1px dashed ${C.border}`}}>
+                                    <span style={{fontSize:9,color:C.muted,fontWeight:700}}>Row {ridx+1}</span>
+                                    <button className="btn btn-d" style={{padding:"2px 8px",marginLeft:"auto",fontSize:9}} onClick={()=>removeTableRow(field.id,row.id)}>✕ Remove</button>
+                                  </div>
+                                  <div style={{display:"flex",flexDirection:"column",gap:8}}>
+                                    {field.tableConfig && field.tableConfig.columns.filter(c=>c.type==="normal").map(col=>(
+                                      <div key={col.id} style={{display:"flex",alignItems:"center",gap:8}}>
+                                        <span style={{fontSize:9,color:C.textDim,fontWeight:600,minWidth:100}}>{col.name}:</span>
+                                        <input type="text" value={row.values[`col_${col.id}`]||""} onChange={(e:ChangeEvent<HTMLInputElement>)=>updateTableCell(field.id,row.id,col.id,e.target.value)} style={{flex:1,fontSize:10,padding:"4px 7px",border:`1px solid ${C.border}`,borderRadius:3,background:C.surface}}/>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              ))}
+
+                              <button className="btn btn-g" style={{fontSize:10}} onClick={()=>addTableRow(field.id)} disabled={field.tableConfig.columns.filter(c=>c.type==="normal").length===0}>➕ Add Row</button>
+                            </div>
+                          </>
+                        )}
+
                         {/* ── CROSS-FIELD DEPENDENCIES ── */}
                         <SectionTitle label="CROSS-FIELD DEPENDENCIES"/>
                         <div style={{fontSize:9,color:C.muted,marginBottom:8,lineHeight:1.5}}>IF [source field] = "value" THEN [action] [target field]</div>
@@ -1301,6 +1486,135 @@ priority: High|Medium|Low  status: Pending  category: Functional|Validation|Boun
                 );
               })
             )}
+          </div>
+
+          {/* RIGHT preview panel */}
+          <div style={{width:300,background:C.card,borderLeft:`1px solid ${C.border}`,padding:"16px",overflowY:"auto",flexShrink:0,display:"flex",flexDirection:"column",gap:12}}>
+            <div>
+              <div style={{fontSize:9,color:C.muted,letterSpacing:2,marginBottom:10}}>FORM PREVIEW</div>
+              {!fields.length ? (
+                <div style={{textAlign:"center",padding:"20px 10px",color:C.muted,fontSize:10}}>
+                  <div style={{opacity:.5,marginBottom:8}}>👁</div>
+                  <div>Add fields to see preview</div>
+                </div>
+              ) : (
+                <div style={{display:"flex",flexDirection:"column",gap:10}}>
+                  {/* Module Title */}
+                  <div style={{paddingBottom:8,borderBottom:`1px solid ${C.border}`}}>
+                    <div style={{fontSize:11,fontWeight:700,color:C.text}}>{module}</div>
+                  </div>
+
+                  {/* Field Previews */}
+                  {fields.map(field => {
+                    const isBtn = field.type === "button";
+                    const mandatory = field.mandatory;
+                    return (
+                      <div key={field.id} style={{fontSize:9,color:C.textDim}}>
+                        {/* Label */}
+                        <div style={{fontSize:9,fontWeight:600,marginBottom:4,display:"flex",alignItems:"center",gap:4}}>
+                          <span>{field.label}</span>
+                          {mandatory && !isBtn && <span style={{color:C.red,fontWeight:700}}>*</span>}
+                          <span style={{fontSize:8,color:C.muted,marginLeft:"auto",background:C.bg,padding:"1px 6px",borderRadius:3}}>{field.type}</span>
+                        </div>
+
+                        {/* Field Rendering */}
+                        {isBtn ? (
+                          <div style={{
+                            padding:"6px 12px",
+                            borderRadius:4,
+                            fontSize:9,
+                            fontWeight:700,
+                            background:field.buttonVariant==="secondary"?C.surface:field.buttonVariant==="danger"?C.red:C.accent,
+                            color:field.buttonVariant==="secondary"?C.textDim:"white",
+                            cursor:"default",
+                            textAlign:"center",
+                            opacity:.8,
+                          }}>
+                            {field.buttonAction==="submit"?"✓":"✕"} {field.label}
+                          </div>
+                        ) : field.type === "table" && field.tableConfig ? (
+                          <div style={{fontSize:8,background:C.bg,border:`1px solid ${C.border}`,borderRadius:4,padding:"6px",overflow:"hidden"}}>
+                            {field.tableConfig.columns.length === 0 ? (
+                              <div style={{color:C.muted,padding:"4px",textAlign:"center"}}>No columns configured</div>
+                            ) : (
+                              <table style={{width:"100%",borderCollapse:"collapse"}}>
+                                <thead>
+                                  <tr style={{borderBottom:`1px solid ${C.border}`}}>
+                                    {field.tableConfig.columns.map(col => (
+                                      <th key={col.id} style={{fontSize:7,padding:"3px 4px",textAlign:"left",fontWeight:600,color:C.accent,background:C.bg}}>
+                                        {col.name || "—"}
+                                      </th>
+                                    ))}
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {field.tableConfig.rows.slice(0, 2).map((row,ridx) => (
+                                    <tr key={row.id} style={{borderBottom:`1px solid ${C.border}22`}}>
+                                      {field.tableConfig.columns.map(col => (
+                                        <td key={col.id} style={{fontSize:7,padding:"2px 4px",overflow:"hidden",whiteSpace:"nowrap",textOverflow:"ellipsis"}}>
+                                          {col.type === "normal" ? row.values[`col_${col.id}`] || "—" : "⚙"}
+                                        </td>
+                                      ))}
+                                    </tr>
+                                  ))}
+                                  {field.tableConfig.rows.length > 2 && (
+                                    <tr style={{borderBottom:`1px solid ${C.border}22`}}>
+                                      <td colSpan={field.tableConfig.columns.length} style={{fontSize:7,padding:"2px 4px",color:C.muted,fontStyle:"italic"}}>
+                                        +{field.tableConfig.rows.length - 2} more rows
+                                      </td>
+                                    </tr>
+                                  )}
+                                </tbody>
+                              </table>
+                            )}
+                          </div>
+                        ) : field.type === "textarea" ? (
+                          <div style={{fontSize:8,background:C.bg,border:`1px solid ${C.border}`,borderRadius:3,padding:"4px",height:40,color:C.muted,fontStyle:"italic",display:"flex",alignItems:"center"}}>
+                            Text area...
+                          </div>
+                        ) : field.type === "dropdown" ? (
+                          <select style={{width:"100%",fontSize:8,padding:"4px 6px",borderRadius:3,border:`1px solid ${C.border}`,background:C.surface}}>
+                            <option>{field.options[0] || "Option 1"}</option>
+                            {field.options.slice(1).map((opt,i) => <option key={i}>{opt}</option>)}
+                          </select>
+                        ) : field.type === "checkbox" ? (
+                          <div style={{display:"flex",flexDirection:"column",gap:3}}>
+                            {field.options.map((opt,i) => (
+                              <label key={i} style={{display:"flex",alignItems:"center",gap:4,cursor:"default",fontSize:8}}>
+                                <input type="checkbox" style={{cursor:"default"}} disabled/>
+                                <span>{opt}</span>
+                              </label>
+                            ))}
+                          </div>
+                        ) : field.type === "radio" ? (
+                          <div style={{display:"flex",flexDirection:"column",gap:3}}>
+                            {field.options.map((opt,i) => (
+                              <label key={i} style={{display:"flex",alignItems:"center",gap:4,cursor:"default",fontSize:8}}>
+                                <input type="radio" style={{cursor:"default"}} disabled/>
+                                <span>{opt}</span>
+                              </label>
+                            ))}
+                          </div>
+                        ) : field.type === "file" ? (
+                          <div style={{fontSize:8,background:C.bg,border:`1px dashed ${C.border}`,borderRadius:3,padding:"8px",textAlign:"center",color:C.muted}}>
+                            📎 Choose file...
+                          </div>
+                        ) : field.type === "date" ? (
+                          <input type="date" style={{width:"100%",fontSize:8,padding:"4px 6px",borderRadius:3,border:`1px solid ${C.border}`,background:C.surface}} disabled/>
+                        ) : (
+                          <input 
+                            type={field.type === "password" ? "password" : field.type === "email" ? "email" : field.type === "number" ? "number" : "text"} 
+                            placeholder={field.defaultValue || "Enter " + field.label.toLowerCase()}
+                            style={{width:"100%",fontSize:8,padding:"4px 6px",borderRadius:3,border:`1px solid ${C.border}`,background:C.surface}}
+                            disabled
+                          />
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}
